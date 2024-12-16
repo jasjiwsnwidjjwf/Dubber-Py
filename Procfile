@@ -1,1 +1,1 @@
-web: streamlit run Transcritor.py
+web: streamlit run Dubber-APP.py
