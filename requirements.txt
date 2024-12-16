@@ -1,3 +1,4 @@
-streamlit as st
-googletrans
-import speech_recognition as sr
+streamlit
+speechrecognition
+pyaudio
+numpy
