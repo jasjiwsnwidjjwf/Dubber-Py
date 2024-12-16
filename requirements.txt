@@ -1,4 +1,5 @@
+gtts
 streamlit
 googletrans==4.0.0-rc1
 speechrecognition
-pydub
+pyaudio
