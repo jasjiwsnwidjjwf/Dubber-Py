@@ -1,1 +1,1 @@
-web: streamlit run translator.py
+web: streamlit run Tradutor.py
