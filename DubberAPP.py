@@ -3,30 +3,34 @@ import whisper
 import librosa
 import soundfile as sf
 from gtts import gTTS
+import os
 
 # Função para transcrever áudio usando Whisper
 def transcribe_audio_whisper(audio_path, input_language=None):
     try:
-        model = whisper.load_model("base")  # Use "base", "small", "medium", "large" dependendo dos recursos
+        model = whisper.load_model("base")
         options = {"language": input_language} if input_language else {}
         result = model.transcribe(audio_path, **options)
         return result["text"]
     except Exception as e:
         return f"Erro na transcrição: {e}"
 
-# Função para salvar áudio em formato de fala (usando gTTS)
-def save_audio(text, language, filename="output.mp3"):
+# Função para salvar áudio em formato WAV usando gTTS
+def save_audio_as_wav(text, language, output_path="output.wav"):
     try:
         tts = gTTS(text=text, lang=language)
-        tts.save(filename)
-        return filename
+        tts.save("temp.mp3")  # Salva temporariamente em MP3
+        data, samplerate = librosa.load("temp.mp3", sr=None)  # Converte para dados de áudio
+        sf.write(output_path, data, samplerate)  # Salva em WAV
+        os.remove("temp.mp3")  # Remove o arquivo temporário
+        return output_path
     except Exception as e:
         return f"Erro ao gerar áudio: {e}"
 
 # Função para converter qualquer áudio para WAV usando Librosa
 def convert_to_wav(input_path, output_path="converted_audio.wav"):
     try:
-        data, samplerate = librosa.load(input_path, sr=None)  # sr=None mantém a taxa original
+        data, samplerate = librosa.load(input_path, sr=None)
         sf.write(output_path, data, samplerate)
         return output_path
     except Exception as e:
@@ -50,10 +54,18 @@ with tab1:
         if not text_input.strip():
             st.error("Por favor, insira algum texto.")
         else:
-            audio_file = save_audio(text_input, language_text)
-            if audio_file.endswith(".mp3"):
-                st.audio(audio_file, format="audio/mp3")
-                st.success("Áudio gerado com sucesso!")
+            # Define nome do arquivo baseado no texto
+            file_name = text_input[:10].replace(" ", "_") + ".wav"
+            audio_file = save_audio_as_wav(text_input, language_text, file_name)
+            if audio_file.endswith(".wav"):
+                st.audio(audio_file, format="audio/wav")
+                with open(audio_file, "rb") as f:
+                    st.download_button(
+                        label="Baixar Áudio",
+                        data=f,
+                        file_name=file_name,
+                        mime="audio/wav"
+                    )
             else:
                 st.error(audio_file)
 
@@ -79,6 +91,7 @@ with tab2:
     if uploaded_file and st.button("Gerar Áudio do Arquivo"):
         try:
             # Salvar o arquivo enviado
+            original_name = os.path.splitext(uploaded_file.name)[0]
             audio_path = f"uploaded_{uploaded_file.name}"
             with open(audio_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
@@ -94,10 +107,17 @@ with tab2:
 
             # Gerar dublagem
             st.info("Gerando a dublagem...")
-            dubbed_audio_file = save_audio(transcribed_text, language_audio)
-            if dubbed_audio_file.endswith(".mp3"):
-                st.audio(dubbed_audio_file, format="audio/mp3")
-                st.success("Áudio dublado gerado com sucesso!")
+            output_name = f"{original_name}_dubbed.wav"
+            dubbed_audio_file = save_audio_as_wav(transcribed_text, language_audio, output_name)
+            if dubbed_audio_file.endswith(".wav"):
+                st.audio(dubbed_audio_file, format="audio/wav")
+                with open(dubbed_audio_file, "rb") as f:
+                    st.download_button(
+                        label="Baixar Áudio",
+                        data=f,
+                        file_name=output_name,
+                        mime="audio/wav"
+                    )
             else:
                 st.error(dubbed_audio_file)
 
