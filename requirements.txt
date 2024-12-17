@@ -3,5 +3,5 @@ openai-whisper==20230314
 librosa==0.10.0.post2
 soundfile==0.12.1
 gtts==2.3.2
-torch==2.0.1  # Necessário para o Whisper
+torch==2.0.1
 numpy==1.25.0
