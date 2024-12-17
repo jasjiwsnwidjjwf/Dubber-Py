@@ -1,182 +1,105 @@
 import streamlit as st
-from googletrans import Translator
-import speech_recognition as sr
-from pydub import AudioSegment
-from pydub.playback import play
-import os
-
-# Inicializar tradutor e reconhecimento de fala
-translator = Translator()
-recognizer = sr.Recognizer()
+import whisper
+import librosa
+import soundfile as sf
 from gtts import gTTS
-import streamlit as st
-from googletrans import Translator
-import speech_recognition as sr
-import os
 
-# Inicializar tradutor e reconhecimento de fala
-translator = Translator()
-recognizer = sr.Recognizer()
-
-# Função para converter áudio para WAV (caso seja necessário)
-def salvar_audio_temporario(audio_file):
+# Função para transcrever áudio usando Whisper
+def transcribe_audio_whisper(audio_path, input_language=None):
     try:
-        with open("temp_audio.wav", "wb") as f:
-            f.write(audio_file.read())
-        return "temp_audio.wav"
-    except Exception as e:
-        return f"Erro ao salvar áudio: {e}"
-
-# Função para transcrever áudio
-def transcrever_audio(audio_path, idioma):
-    try:
-        with sr.AudioFile(audio_path) as source:
-            audio_data = recognizer.record(source)
-        texto = recognizer.recognize_google(audio_data, language=idioma)
-        return texto
+        model = whisper.load_model("base")  # Use "base", "small", "medium", "large" dependendo dos recursos
+        options = {"language": input_language} if input_language else {}
+        result = model.transcribe(audio_path, **options)
+        return result["text"]
     except Exception as e:
         return f"Erro na transcrição: {e}"
 
-# Função para traduzir texto
-def traduzir_texto(texto, origem, destino="pt"):
+# Função para salvar áudio em formato de fala (usando gTTS)
+def save_audio(text, language, filename="output.mp3"):
     try:
-        traducao = translator.translate(texto, src=origem, dest=destino)
-        return traducao.text
+        tts = gTTS(text=text, lang=language)
+        tts.save(filename)
+        return filename
     except Exception as e:
-        return f"Erro na tradução: {e}"
+        return f"Erro ao gerar áudio: {e}"
 
-# Função para sintetizar áudio a partir do texto traduzido
-def sintetizar_audio(texto, idioma):
+# Função para converter qualquer áudio para WAV usando Librosa
+def convert_to_wav(input_path, output_path="converted_audio.wav"):
     try:
-        tts = gTTS(texto, lang=idioma)
-        temp_audio = "audio_dublado.mp3"
-        tts.save(temp_audio)
-        return temp_audio
-    except Exception as e:
-        return f"Erro na síntese de áudio: {e}"
-
-# Função principal
-def main():
-    st.title("Dublagem de Áudio com Tradução")
-
-    # Entrada de áudio
-    st.header("Envie um arquivo de áudio")
-    audio_file = st.file_uploader("Envie um arquivo de áudio (apenas WAV):", type=["wav"])
-    idioma_origem = st.selectbox("Idioma do Áudio Original", ["Português", "Inglês", "Espanhol", "Francês", "Alemão"])
-    idioma_destino = st.selectbox("Idioma para Dublagem", ["Português", "Inglês", "Espanhol", "Francês", "Alemão"])
-
-    # Mapeamento de idiomas para os códigos das APIs
-    idioma_map = {
-        "Português": "pt",
-        "Inglês": "en",
-        "Espanhol": "es",
-        "Francês": "fr",
-        "Alemão": "de"
-    }
-
-    if audio_file and st.button("Dublar Áudio"):
-        # Salvar arquivo de áudio temporariamente
-        audio_path = salvar_audio_temporario(audio_file)
-        if isinstance(audio_path, str) and audio_path.startswith("Erro"):
-            st.error(audio_path)
-        else:
-            # Transcrição do áudio
-            idioma_origem_code = idioma_map[idioma_origem] + "-BR"
-            transcricao = transcrever_audio(audio_path, idioma_origem_code)
-            
-            if "Erro" in transcricao:
-                st.error(transcricao)
-            else:
-                # Tradução da transcrição
-                idioma_destino_code = idioma_map[idioma_destino]
-                traducao = traduzir_texto(transcricao, origem=idioma_origem_code.split("-")[0], destino=idioma_destino_code)
-
-                if "Erro" in traducao:
-                    st.error(traducao)
-                else:
-                    # Geração do áudio dublado
-                    audio_dublado_path = sintetizar_audio(traducao, idioma_destino_code)
-                    if isinstance(audio_dublado_path, str) and audio_dublado_path.startswith("Erro"):
-                        st.error(audio_dublado_path)
-                    else:
-                        st.audio(audio_dublado_path, format="audio/mp3")
-                        st.success("Áudio dublado gerado com sucesso!")
-
-            # Remover arquivos temporários
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-            if os.path.exists("audio_dublado.mp3"):
-                os.remove("audio_dublado.mp3")
-
-if __name__ == "__main__":
-    main()
-
-# Função para converter áudio para o formato WAV (se necessário)
-def converter_para_wav(audio_file):
-    try:
-        audio = AudioSegment.from_file(audio_file)
-        temp_wav = "temp_audio.wav"
-        audio.export(temp_wav, format="wav")
-        return temp_wav
+        data, samplerate = librosa.load(input_path, sr=None)  # sr=None mantém a taxa original
+        sf.write(output_path, data, samplerate)
+        return output_path
     except Exception as e:
         return f"Erro ao converter áudio: {e}"
 
-# Função para transcrever áudio
-def transcrever_audio(audio_path, idioma):
-    try:
-        with sr.AudioFile(audio_path) as source:
-            audio_data = recognizer.record(source)
-        texto = recognizer.recognize_google(audio_data, language=idioma)
-        return texto
-    except Exception as e:
-        return f"Erro na transcrição: {e}"
+# Configurações do Streamlit
+st.title("Dublador de Áudio com Whisper")
+st.write("Envie um arquivo de áudio ou digite texto para gerar um áudio dublado!")
 
-# Função para traduzir texto
-def traduzir_texto(texto, origem, destino="pt"):
-    try:
-        traducao = translator.translate(texto, src=origem, dest=destino)
-        return traducao.text
-    except Exception as e:
-        return f"Erro na tradução: {e}"
+tab1, tab2 = st.tabs(["Texto", "Áudio"])
 
-# Função principal
-def main():
-    st.title("Transcrição e Tradução de Áudio")
-
-    # Entrada de áudio para transcrição e tradução
-    st.header("Envie um arquivo de áudio")
-    audio_file = st.file_uploader("Envie um arquivo de áudio (formatos suportados: MP3, WAV, etc.):", type=["wav", "mp3", "ogg", "flac"])
-    idioma_audio = st.selectbox("Idioma do Áudio", ["Português", "Inglês", "Espanhol", "Francês", "Alemão"])
-
-    # Mapeando os idiomas para os códigos da API
-    idioma_map = {
-        "Português": "pt-BR",
-        "Inglês": "en-US",
-        "Espanhol": "es-ES",
-        "Francês": "fr-FR",
-        "Alemão": "de-DE"
-    }
-
-    if audio_file and st.button("Transcrever Áudio"):
-        with open("uploaded_audio", "wb") as f:
-            f.write(audio_file.read())
-
-        audio_path = converter_para_wav("uploaded_audio")
-        if isinstance(audio_path, str) and audio_path.startswith("Erro"):
-            st.error(audio_path)
+# Texto para fala
+with tab1:
+    st.header("Texto para Fala")
+    text_input = st.text_area("Digite o texto que deseja converter em áudio", "")
+    language_text = st.selectbox(
+        "Escolha o idioma para o áudio (código ISO 639-1)",
+        ["en", "pt", "es", "fr", "de", "it"]
+    )
+    if st.button("Gerar Áudio do Texto"):
+        if not text_input.strip():
+            st.error("Por favor, insira algum texto.")
         else:
-            transcricao = transcrever_audio(audio_path, idioma_map[idioma_audio])
-            st.write("### Transcrição:")
-            st.write(transcricao)
+            audio_file = save_audio(text_input, language_text)
+            if audio_file.endswith(".mp3"):
+                st.audio(audio_file, format="audio/mp3")
+                st.success("Áudio gerado com sucesso!")
+            else:
+                st.error(audio_file)
 
-            if transcricao and st.button("Traduzir Transcrição"):
-                traducao = traduzir_texto(transcricao, origem=idioma_map[idioma_audio].split("-")[0])
-                st.write("### Tradução:")
-                st.write(traducao)
+# Áudio para fala
+with tab2:
+    st.header("Áudio para Fala")
+    uploaded_file = st.file_uploader("Envie um arquivo de áudio (.mp3, .wav)", type=["mp3", "wav"])
+    
+    # Opção de idioma de entrada
+    input_language = st.selectbox(
+        "Selecione o idioma do áudio de entrada",
+        ["Auto", "en", "pt", "es", "fr", "de", "it"],
+        index=0
+    )
+    input_language = None if input_language == "Auto" else input_language
+    
+    # Opção de idioma de saída
+    language_audio = st.selectbox(
+        "Selecione o idioma para a dublagem (saída)",
+        ["en", "pt", "es", "fr", "de", "it"]
+    )
+    
+    if uploaded_file and st.button("Gerar Áudio do Arquivo"):
+        try:
+            # Salvar o arquivo enviado
+            audio_path = f"uploaded_{uploaded_file.name}"
+            with open(audio_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
-            # Remover arquivo temporário
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
+            # Converter para WAV se necessário
+            if not audio_path.endswith(".wav"):
+                audio_path = convert_to_wav(audio_path)
 
-if __name__ == "__main__":
-    main()
+            # Transcrever áudio com Whisper
+            st.info("Transcrevendo o áudio com Whisper...")
+            transcribed_text = transcribe_audio_whisper(audio_path, input_language)
+            st.write(f"Transcrição: {transcribed_text}")
+
+            # Gerar dublagem
+            st.info("Gerando a dublagem...")
+            dubbed_audio_file = save_audio(transcribed_text, language_audio)
+            if dubbed_audio_file.endswith(".mp3"):
+                st.audio(dubbed_audio_file, format="audio/mp3")
+                st.success("Áudio dublado gerado com sucesso!")
+            else:
+                st.error(dubbed_audio_file)
+
+        except Exception as e:
+            st.error(f"Erro ao processar o áudio: {e}")
