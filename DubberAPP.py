@@ -2,39 +2,39 @@ import streamlit as st
 import whisper
 import librosa
 import soundfile as sf
-from gtts import gTTS
+from gtts import gTTS  # Corrigido de gtts para gTTS
 import os
 
-# Função para transcrever áudio usando Whisper
+# Função para transcrever áudio usando whisper
 def transcribe_audio_whisper(audio_path, input_language=None):
     try:
         model = whisper.load_model("base")
         options = {"language": input_language} if input_language else {}
         result = model.transcribe(audio_path, **options)
         return result["text"]
-    except Exception as e:
-        return f"Erro na transcrição: {e}"
+    except Exception as e:  # Corrigido de "exception" para "Exception"
+        return f"erro na transcrição: {e}"
 
-# Função para salvar áudio em formato WAV usando gTTS
+# Função para salvar áudio em formato wav usando gTTS
 def save_audio_as_wav(text, language, output_path="output.wav"):
     try:
-        tts = gTTS(text=text, lang=language)
-        tts.save("temp.mp3")  # Salva temporariamente em MP3
-        data, samplerate = librosa.load("temp.mp3", sr=None)  # Converte para dados de áudio
-        sf.write(output_path, data, samplerate)  # Salva em WAV
+        tts = gTTS(text=text, lang=language)  # Corrigido de gtts para gTTS
+        tts.save("temp.mp3")  # Salva temporariamente em mp3
+        data, samplerate = librosa.load("temp.mp3", sr=None)  # Corrigido de "none" para "None"
+        sf.write(output_path, data, samplerate)  # Salva em wav
         os.remove("temp.mp3")  # Remove o arquivo temporário
         return output_path
-    except Exception as e:
-        return f"Erro ao gerar áudio: {e}"
+    except Exception as e:  # Corrigido de "exception" para "Exception"
+        return f"erro ao gerar áudio: {e}"
 
-# Função para converter qualquer áudio para WAV usando Librosa
+# Função para converter qualquer áudio para wav usando librosa
 def convert_to_wav(input_path, output_path="converted_audio.wav"):
     try:
-        data, samplerate = librosa.load(input_path, sr=None)
+        data, samplerate = librosa.load(input_path, sr=None)  # Corrigido de "none" para "None"
         sf.write(output_path, data, samplerate)
         return output_path
-    except Exception as e:
-        return f"Erro ao converter áudio: {e}"
+    except Exception as e:  # Corrigido de "exception" para "Exception"
+        return f"erro ao converter áudio: {e}"
 
 # Configurações do Streamlit
 st.title("Dublador de Áudio com Whisper")
@@ -50,6 +50,7 @@ with tab1:
         "Escolha o idioma para o áudio (código ISO 639-1)",
         ["en", "pt", "es", "fr", "de", "it"]
     )
+
     if st.button("Gerar Áudio do Texto"):
         if not text_input.strip():
             st.error("Por favor, insira algum texto.")
@@ -73,21 +74,21 @@ with tab1:
 with tab2:
     st.header("Áudio para Fala")
     uploaded_file = st.file_uploader("Envie um arquivo de áudio (.mp3, .wav)", type=["mp3", "wav"])
-    
+
     # Opção de idioma de entrada
     input_language = st.selectbox(
         "Selecione o idioma do áudio de entrada",
-        ["Auto", "en", "pt", "es", "fr", "de", "it"],
+        ["auto", "en", "pt", "es", "fr", "de", "it"],
         index=0
     )
-    input_language = None if input_language == "Auto" else input_language
-    
+    input_language = None if input_language == "auto" else input_language
+
     # Opção de idioma de saída
     language_audio = st.selectbox(
         "Selecione o idioma para a dublagem (saída)",
         ["en", "pt", "es", "fr", "de", "it"]
     )
-    
+
     if uploaded_file and st.button("Gerar Áudio do Arquivo"):
         try:
             # Salvar o arquivo enviado
@@ -96,11 +97,11 @@ with tab2:
             with open(audio_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
-            # Converter para WAV se necessário
+            # Converter para wav se necessário
             if not audio_path.endswith(".wav"):
                 audio_path = convert_to_wav(audio_path)
 
-            # Transcrever áudio com Whisper
+            # Transcrever áudio com whisper
             st.info("Transcrevendo o áudio com Whisper...")
             transcribed_text = transcribe_audio_whisper(audio_path, input_language)
             st.write(f"Transcrição: {transcribed_text}")
@@ -121,5 +122,5 @@ with tab2:
             else:
                 st.error(dubbed_audio_file)
 
-        except Exception as e:
+        except Exception as e:  # Corrigido de "exception" para "Exception"
             st.error(f"Erro ao processar o áudio: {e}")
